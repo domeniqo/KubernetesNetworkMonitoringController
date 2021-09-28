@@ -14,6 +14,11 @@ namespace MonitoringController
             return (value == "enabled");
         }
 
+        public static bool HasContainer(this V1PodSpec spec)
+        {
+            return spec.Containers.Any(cont => cont.Name.Contains("csirt-probe"));
+        }
+
         public static void AddContainer(this V1PodSpec spec, V1Container container)
         {
             spec.Containers.Add(container);
