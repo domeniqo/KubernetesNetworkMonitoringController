@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Container
+name: csirt-probe-ipfixprobe-exporter
+image: domeniqo/csirt:ipfixprobe-dev
+imagePullPolicy: Always
+command: ["/bin/sh", "-c"]
+args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && sleep infinity"]
+env:
+  - name: KUBERNETES_POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name

@@ -1,0 +1,19 @@
+﻿apiVersion: v1
+kind: Container
+name: csirt-probe-flowmon-exporter
+image: domeniqo/csirt:kube-flowmon_1.2
+imagePullPolicy: Always
+command: ["/bin/sh", "-c"]
+args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && sleep infinity"]
+volumeMounts:
+- mountPath: /dev/mem
+  name: dev-mem
+securityContext:
+  privileged: true
+  capabilities:
+    add: ["SYS_RAWIO"]
+env:
+  - name: KUBERNETES_POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
