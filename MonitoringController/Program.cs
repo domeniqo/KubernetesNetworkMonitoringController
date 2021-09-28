@@ -88,89 +88,24 @@ namespace watch
 
         private static void EventHandler(WatchEventType type, V1Pod pod)
         {
-            Console.WriteLine(pod.Name() + " - " + type + "\n");
-            if (type == WatchEventType.Added)
+            if (type == WatchEventType.Added || type == WatchEventType.Modified)
             {
-                string monitoringValue;
-                if (pod.Metadata.Labels.TryGetValue("csirt.muni.cz/monitoring", out monitoringValue)
-                    && monitoringValue == "enabled"
-                    && !pod.Metadata.Labels.ContainsKey("csirt.muni.cz/monitoringState"))
+                if (pod.IsMonitored())
                 {
-                    // add container and update labels to initialization
-                    pod.Metadata.Labels.Add("csirt.muni.cz/monitoringState", "initialization");
-                    try
+                    if (!pod.Spec.HasContainer())
                     {
+                        pod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
                         client.ReplaceNamespacedPod(pod, pod.Name(), pod.Namespace());
-                    }
-                    catch (Exception e)
+                    } 
+                    else
                     {
-                        Console.WriteLine(e.Message);
-                    }
-
-                    Console.WriteLine("want to add container to new created pod");
-                }
-            }
-
-            if (type == WatchEventType.Modified)
-            {
-                string monitoringValue;
-                string monitoringState;
-                if (pod.Metadata.Labels.TryGetValue("csirt.muni.cz/monitoring", out monitoringValue))
-                {
-                    if (!pod.Metadata.Labels.ContainsKey("csirt.muni.cz/monitoringState"))
-                    {
-                        // adding container
-                        addContainer(pod);
-                        pod.Metadata.Labels.Add("csirt.muni.cz/monitoringState", "initialization");
-                        try
-                        {
-                            client.ReplaceNamespacedPod(pod, pod.Name(), pod.Namespace());
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.Message);
-                        }
-
-                        Console.WriteLine("want to add container to modified pod");
-                    }
-
-                    if (monitoringValue == "enabled"
-                        && pod.Metadata.Labels.TryGetValue("csirt.muni.cz/monitoringState", out monitoringState)
-                        && monitoringState == "initialization")
-                    {
-                        // check wether monitoring container is running properly and set monitoring label
-                        Console.WriteLine("checking if container is running properly");
-                    }
-
-                    if (monitoringValue == "enabled"
-                        && pod.Metadata.Labels.TryGetValue("csirt.muni.cz/monitoringState", out monitoringState)
-                        && monitoringState == "monitoring")
-                    {
-                        // check wether all requirements are fullfilled (should be without change)
-                        Console.WriteLine("checking if container is running properly");
-                    }
-
-                    if (monitoringValue == "disabled")
-                    {
-                        pod.Labels().Remove("csirt.muni.cz/monitoringState");
-                        try
-                        {
-                            client.ReplaceNamespacedPod(pod, pod.Name(), pod.Namespace());
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.Message);
-                        }
-
-                        Console.WriteLine("user decided to turn monitoring off - removing container and label");
-                        // remove monitoring container and update labels
+                        Console.Write("already monitored pod: " + pod.Name());
                     }
                 }
                 else
                 {
-                    // check if eventually our container is not running and labels set (user updated pod in a way he removed
-                    // csirt.muni.cz/monitoring label completely insted of using "disabled" option)
-                    Console.WriteLine("csirt.muni.cz/monitoring label not set, but maybe it's user fault - checking actual state and disabling monitoring if enabled");
+                    Console.WriteLine("not monitored pod: " + pod.Name());
+                    //remove containers if any exists
                 }
             }
         }
