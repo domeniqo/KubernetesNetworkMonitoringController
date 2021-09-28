@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,7 +6,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="IController.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="KubernetesClient" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ContainerTemplates\ipfixprobe.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="ContainerTemplates\flowmonprobe.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

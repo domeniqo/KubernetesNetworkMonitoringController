@@ -3,6 +3,8 @@ using System.Linq;
 using System.Threading;
 using k8s;
 using k8s.Models;
+using System.Collections.Generic;
+using MonitoringController;
 
 namespace watch
 {
@@ -49,6 +51,7 @@ namespace watch
                     if (owner.Kind == "Deployment")
                     {
                         var deployment = client.ReadNamespacedDeployment(owner.Name, rs.Namespace());
+                        
                         addContainer(deployment);
                     }
                     else
@@ -189,5 +192,7 @@ namespace watch
                 ctrlc.Wait();
             }
         }
+
+
     }
 }
