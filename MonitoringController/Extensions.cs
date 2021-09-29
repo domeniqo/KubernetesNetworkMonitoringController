@@ -9,8 +9,8 @@ namespace MonitoringController
     {
         public static bool IsMonitored(this IMetadata<V1ObjectMeta> obj)
         {
-            string value;
-            obj.Labels().TryGetValue("csirt.muni.cz/monitoring", out value);
+            string value = string.Empty;
+            obj.Labels()?.TryGetValue("csirt.muni.cz/monitoring", out value);
             return (value == "enabled");
         }
 
