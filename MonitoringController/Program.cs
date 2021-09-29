@@ -51,7 +51,7 @@ namespace watch
                     if (owner.Kind == "Deployment")
                     {
                         var deployment = client.ReadNamespacedDeployment(owner.Name, rs.Namespace());
-                        
+
                         addContainer(deployment);
                     }
                     else
@@ -88,26 +88,67 @@ namespace watch
 
         private static void EventHandler(WatchEventType type, V1Pod pod)
         {
-            if (type == WatchEventType.Added || type == WatchEventType.Modified)
+            try
             {
-                if (pod.IsMonitored())
+                if (type == WatchEventType.Added || type == WatchEventType.Modified)
                 {
-                    if (!pod.Spec.HasContainer())
+                    if (pod.IsMonitored())
                     {
-                        pod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
-                        client.ReplaceNamespacedPod(pod, pod.Name(), pod.Namespace());
-                    } 
+                        if (!pod.Spec.HasContainer())
+                        {
+                            pod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
+                            Console.WriteLine("adding label to " + pod.Name());
+                            try
+                            {
+                                pod.Labels().Add("csirt.muni.monitoringState", "init");
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine(e.Message);
+                            }
+                            Console.WriteLine("deleting existing pod " + pod.Name());
+                            if (pod.Metadata.DeletionTimestamp == null)
+                            {
+                                client.DeleteNamespacedPod(pod.Name(), pod.Namespace());
+                                V1Pod newPod = new V1Pod();
+                                newPod.Metadata = new V1ObjectMeta();
+                                newPod.Metadata.Annotations = pod.Annotations();
+                                newPod.Metadata.Name = pod.Name() + "-monitored";
+                                newPod.Metadata.Labels = pod.Labels();
+                                newPod.Metadata.NamespaceProperty = pod.Namespace();
+                                newPod.Spec = pod.Spec;
+                                newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
+
+                                Console.WriteLine("creating new pod");
+                                try
+                                {
+                                    var p = client.CreateNamespacedPod(newPod, pod.Namespace());
+                                    Console.WriteLine("pod created " + p.Name());
+                                }
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine("cannot create pod " + e.Message);
+                                }
+                            }
+
+                        }
+                        else
+                        {
+                            Console.WriteLine("already monitored pod: " + pod.Name());
+                        }
+                    }
                     else
                     {
-                        Console.Write("already monitored pod: " + pod.Name());
+                        Console.WriteLine("not monitored pod: " + pod.Name());
+                        //remove containers if any exists
                     }
                 }
-                else
-                {
-                    Console.WriteLine("not monitored pod: " + pod.Name());
-                    //remove containers if any exists
-                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine("something went wrong " + e.Message + "\n" + e.StackTrace);
+            }
+
         }
 
         private static void Main(string[] args)
