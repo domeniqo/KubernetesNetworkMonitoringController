@@ -4,9 +4,8 @@ using System.Threading;
 using k8s;
 using k8s.Models;
 using System.Collections.Generic;
-using MonitoringController;
 
-namespace watch
+namespace MonitoringController
 {
     internal class Program
     {
@@ -133,7 +132,7 @@ namespace watch
                             //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
                             //- we do not care if this call is realy completed, therefor "fire and forget" approach is used
                             Console.WriteLine("deleting existing pod " + pod.Name());
-                            client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace());
+                            client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0);
                             
                             pod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
                             Console.WriteLine("adding label to " + pod.Name());
@@ -143,6 +142,7 @@ namespace watch
                             newPod.Metadata.Annotations = pod.Annotations();
                             newPod.Metadata.Name = pod.Name() + "-monitored";
                             newPod.Metadata.Labels = pod.Labels();
+                            newPod.Labels()["csirt.muni.cz/originPodName"] = pod.Name();
                             newPod.Metadata.NamespaceProperty = pod.Namespace();
                             newPod.Spec = pod.Spec;
                             newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
@@ -179,16 +179,27 @@ namespace watch
                                 //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
                                 //- we do not care if this call is realy completed, therefor "fire and forget" approach is used
                                 Console.WriteLine("deleting existing pod " + pod.Name());
-                                client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace());
+                                var podDeletion = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0);
 
                                 V1Pod newPod = new V1Pod();
                                 newPod.Metadata = new V1ObjectMeta();
                                 newPod.Metadata.Annotations = pod.Annotations();
-                                newPod.Metadata.Name = pod.Name() + "-not-monitored";
+                                if (pod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+                                {
+                                    newPod.Metadata.Name = pod.Labels()["csirt.muni.cz/originPodName"];
+                                } 
+                                else
+                                {
+                                    newPod.Metadata.Name = pod.Name() + "-not-monitored";
+                                }
                                 newPod.Metadata.Labels = pod.Labels();
                                 if (newPod.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
                                 {
                                     newPod.Labels().Remove("csirt.muni.cz/monitoringState");
+                                }
+                                if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+                                {
+                                    newPod.Labels().Remove("csirt.muni.cz/originPodName");
                                 }
                                 newPod.Metadata.NamespaceProperty = pod.Namespace();
                                 newPod.Spec = pod.Spec;
@@ -200,6 +211,7 @@ namespace watch
                                 Console.WriteLine("creating new pod without probes");
                                 try
                                 {
+                                    await podDeletion;
                                     var p = client.CreateNamespacedPodAsync(newPod, pod.Namespace());
                                     Console.WriteLine("pod created " + (await p).Name());
                                 }
