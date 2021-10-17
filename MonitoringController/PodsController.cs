@@ -12,6 +12,7 @@ namespace MonitoringController
     {
         private IKubernetes client;
 
+        #region public
         public PodsController(IKubernetes client)
         {
             this.client = client;
@@ -63,26 +64,30 @@ namespace MonitoringController
                         {
                             //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
                             //- we do not care if this call is realy completed, therefor "fire and forget" approach is used
-                            Console.WriteLine("deleting existing pod " + pod.Name());
+                            Console.WriteLine("(API REQUEST) " + pod.Name() + ": deleting existing pod");
                             client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0);
 
-                            pod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
-                            Console.WriteLine("adding label to " + pod.Name());
-                            pod.Labels()["csirt.muni.cz/monitoringState"] = "init";
-                            V1Pod newPod = new V1Pod();
-                            newPod.Metadata = new V1ObjectMeta();
-                            newPod.Metadata.Annotations = pod.Annotations();
-                            newPod.Metadata.Name = pod.Name() + "-monitored";
-                            newPod.Metadata.Labels = pod.Labels();
+                            V1Pod newPod = GenerateApplicablePod(pod);
+
+                            Console.WriteLine(newPod.Name() + ": adding monitoring container");
+                            newPod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
+                            
+                            Console.WriteLine(newPod.Name() + ": adding labels");
+                            newPod.Labels()["csirt.muni.cz/monitoringState"] = "init";
                             newPod.Labels()["csirt.muni.cz/originPodName"] = pod.Name();
-                            newPod.Metadata.NamespaceProperty = pod.Namespace();
-                            newPod.Spec = pod.Spec;
+
+                            var newName = pod.Name() + "-monitored";
+                            Console.WriteLine(newName + ": changing name. Old name: " +  pod.Name());
+                            newPod.Metadata.Name = newName;
+
+                            Console.WriteLine(newPod.Name() + ": adding image pull secrets");
                             newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
-                            Console.WriteLine("creating new pod");
+                            
+                            Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod");
                             try
                             {
                                 var p = client.CreateNamespacedPodAsync(newPod, pod.Namespace());
-                                Console.WriteLine("pod created " + (await p).Name());
+                                Console.WriteLine("(API RESPONSE) " + (await p).Name() + ": pod created");
                             }
                             catch (Exception e)
                             {
@@ -110,21 +115,22 @@ namespace MonitoringController
                             {
                                 //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
                                 //- we do not care if this call is realy completed, therefor "fire and forget" approach is used
-                                Console.WriteLine("deleting existing pod " + pod.Name());
+                                Console.WriteLine("(API REQUEST)deleting existing pod " + pod.Name());
                                 var podDeletion = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0);
 
-                                V1Pod newPod = new V1Pod();
-                                newPod.Metadata = new V1ObjectMeta();
-                                newPod.Metadata.Annotations = pod.Annotations();
-                                if (pod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+                                V1Pod newPod = GenerateApplicablePod(pod);
+
+                                if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
                                 {
-                                    newPod.Metadata.Name = pod.Labels()["csirt.muni.cz/originPodName"];
+                                    newPod.Metadata.Name = newPod.Labels()["csirt.muni.cz/originPodName"];
                                 }
                                 else
                                 {
-                                    newPod.Metadata.Name = pod.Name() + "-not-monitored";
+                                    newPod.Metadata.Name = newPod.Name() + "-not-monitored";
                                 }
-                                newPod.Metadata.Labels = pod.Labels();
+                                Console.WriteLine(newPod.Name() + ": updating name of pod. Old name: " + pod.Name());
+
+                                Console.WriteLine(newPod.Name() + ": updating labels of pod");
                                 if (newPod.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
                                 {
                                     newPod.Labels().Remove("csirt.muni.cz/monitoringState");
@@ -133,19 +139,18 @@ namespace MonitoringController
                                 {
                                     newPod.Labels().Remove("csirt.muni.cz/originPodName");
                                 }
-                                newPod.Metadata.NamespaceProperty = pod.Namespace();
-                                newPod.Spec = pod.Spec;
+
+                                Console.WriteLine(newPod.Name() + ": removing all monitoring containers ('csirt-probe' in container name)");
                                 newPod.Spec.Containers = newPod.Spec.Containers.Except(pod.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
                                 if (newPod.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
                                 {
                                     newPod.Spec.ImagePullSecrets.Remove(newPod.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
                                 }
-                                Console.WriteLine("creating new pod without probes");
+                                Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod without probes");
                                 try
                                 {
-                                    await podDeletion;
                                     var p = client.CreateNamespacedPodAsync(newPod, pod.Namespace());
-                                    Console.WriteLine("pod created " + (await p).Name());
+                                    Console.WriteLine("(API RESPONSE) " + (await p).Name() + ": pod created");
                                 }
                                 catch (Exception e)
                                 {
@@ -162,8 +167,27 @@ namespace MonitoringController
             }
             catch (Exception e)
             {
-                Console.WriteLine("something went wrong " + e.Message + "\n" + e.StackTrace);
+                Console.WriteLine(pod.Name() + "Error during k8s event handling (PodsController):\n" + e.Message + "\n" + e.StackTrace);
             }
         }
+        #endregion
+
+        #region private
+        /***
+         * This method should generate POD, which is applicable and can be used as configuration for creating new POD request to k8s API.
+         * The main purpose is that you cannot send request to create new POD containing some fields you optained when getting resource from API (i.e. Pod.Metadata.creationTimestamp).
+         * */
+        private V1Pod GenerateApplicablePod(V1Pod original)
+        {
+            V1Pod newPod = new V1Pod();
+            newPod.Metadata = new V1ObjectMeta();
+            newPod.Metadata.Name = original.Name();
+            newPod.Metadata.Annotations = original.Annotations();
+            newPod.Metadata.Labels = original.Labels();
+            newPod.Metadata.NamespaceProperty = original.Namespace();
+            newPod.Spec = original.Spec;
+            return newPod;
+        }
+        #endregion
     }
 }
