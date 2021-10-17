@@ -24,13 +24,23 @@ namespace MonitoringController
             {
                 if (type == WatchEventType.Added || type == WatchEventType.Modified)
                 {
+                    if (pod.Metadata.DeletionTimestamp != null)
+                    {
+                        Console.WriteLine(pod.Name() + ": is terminating");
+                        return;
+                    }
+                    if (pod.Status.Phase != "Running")
+                    {
+                        Console.WriteLine(pod.Name() + ": is not in stable running state");
+                        return;
+                    }
                     if (pod.IsMonitored())
                     {
                         bool containerNeeded = true;
                         if (pod.Spec.HasContainer())
                         {
                             Console.WriteLine(pod.Name() + ": already has monitoring container");
-                            if (pod.Status.Phase == "Running" && pod.Labels()["csirt.muni.cz/monitoringState"] == "init")
+                            if (pod.Labels()?["csirt.muni.cz/monitoringState"] == "init")
                             {
                                 pod.Labels()["csirt.muni.cz/monitoringState"] = "monitoring";
                                 Console.WriteLine("(API REQUEST) " + pod.Name() + ": updating csirt.muni.cz/monitoringState label");
@@ -50,16 +60,6 @@ namespace MonitoringController
                         if (pod.HasController())
                         {
                             Console.WriteLine(pod.Name() + ": is controlled by other resource");
-                            containerNeeded = false;
-                        }
-                        if (pod.Metadata.DeletionTimestamp != null)
-                        {
-                            Console.WriteLine(pod.Name() + ": is terminating");
-                            containerNeeded = false;
-                        }
-                        if (pod.Status.Phase != "Running")
-                        {
-                            Console.WriteLine(pod.Name() + ": is not in stable running state");
                             containerNeeded = false;
                         }
                         if (containerNeeded)
@@ -104,64 +104,50 @@ namespace MonitoringController
                     {
                         if (pod.Spec.HasContainer())
                         {
-                            bool deleteContainer = true;
-                            if (pod.Metadata.DeletionTimestamp != null)
+                            //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
+                            Console.WriteLine("(API REQUEST)deleting existing pod " + pod.Name());
+                            var deletionTask = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
+                                .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+
+                            V1Pod newPod = GenerateApplicablePod(pod);
+
+                            if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
                             {
-                                Console.WriteLine(pod.Name() + ": is terminating");
-                                deleteContainer = false;
+                                newPod.Metadata.Name = newPod.Labels()["csirt.muni.cz/originPodName"];
                             }
-                            if (pod.Status.Phase != "Running")
+                            else
                             {
-                                Console.WriteLine(pod.Name() + ":  is not in stable Running state");
-                                deleteContainer = false;
+                                newPod.Metadata.Name = newPod.Name() + "-not-monitored";
                             }
-                            if (deleteContainer)
+                            Console.WriteLine(newPod.Name() + ": updating name of pod. Old name: " + pod.Name());
+
+                            Console.WriteLine(newPod.Name() + ": updating labels of pod");
+                            if (newPod.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
                             {
-                                //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
-                                Console.WriteLine("(API REQUEST)deleting existing pod " + pod.Name());
-                                var deletionTask = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
-                                    .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+                                newPod.Labels().Remove("csirt.muni.cz/monitoringState");
+                            }
+                            if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+                            {
+                                newPod.Labels().Remove("csirt.muni.cz/originPodName");
+                            }
 
-                                V1Pod newPod = GenerateApplicablePod(pod);
-
-                                if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
-                                {
-                                    newPod.Metadata.Name = newPod.Labels()["csirt.muni.cz/originPodName"];
-                                }
-                                else
-                                {
-                                    newPod.Metadata.Name = newPod.Name() + "-not-monitored";
-                                }
-                                Console.WriteLine(newPod.Name() + ": updating name of pod. Old name: " + pod.Name());
-
-                                Console.WriteLine(newPod.Name() + ": updating labels of pod");
-                                if (newPod.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
-                                {
-                                    newPod.Labels().Remove("csirt.muni.cz/monitoringState");
-                                }
-                                if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
-                                {
-                                    newPod.Labels().Remove("csirt.muni.cz/originPodName");
-                                }
-
-                                Console.WriteLine(newPod.Name() + ": removing all monitoring containers ('csirt-probe' in container name)");
-                                newPod.Spec.Containers = newPod.Spec.Containers.Except(pod.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
-                                if (newPod.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
-                                {
-                                    newPod.Spec.ImagePullSecrets.Remove(newPod.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
-                                }
-                                Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod without probes");
-                                try
-                                {
-                                    //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                                    await deletionTask;
-                                    await client.CreateNamespacedPodAsync(newPod, pod.Namespace()) 
-                                        .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod created"));
-                                }
-                                catch (Exception e)
-                                {
-                                    Console.WriteLine("Cannot create pod " + e.Message);
-                                }
+                            Console.WriteLine(newPod.Name() + ": removing all monitoring containers ('csirt-probe' in container name)");
+                            newPod.Spec.Containers = newPod.Spec.Containers.Except(pod.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
+                            if (newPod.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
+                            {
+                                newPod.Spec.ImagePullSecrets.Remove(newPod.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
+                            }
+                            Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod without probes");
+                            try
+                            {
+                                //awaiting even this returns void, because if operations would throw exception, we want to catch them
+                                await deletionTask;
+                                await client.CreateNamespacedPodAsync(newPod, pod.Namespace()) 
+                                    .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod created"));
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("Cannot create pod " + e.Message);
                             }
                         }
                         else
