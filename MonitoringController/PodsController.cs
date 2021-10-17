@@ -22,6 +22,7 @@ namespace MonitoringController
         {
             try
             {
+                //we do not care about other WatchEventType
                 if (type == WatchEventType.Added || type == WatchEventType.Modified)
                 {
                     //not valid states
@@ -52,7 +53,7 @@ namespace MonitoringController
                     }
                     else
                     {
-                        //check if label csirt.muni.cz/monitoring is set to 'disabled' or removed from pod completely
+                        //check if pod has monitoring container, but should not have according to label csirt.muni.cz/monitoring
                         if (pod.Spec.HasContainer())
                         {
                             await DisablePodMonitoring(pod);
