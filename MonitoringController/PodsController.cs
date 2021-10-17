@@ -64,10 +64,18 @@ namespace MonitoringController
                         }
                         if (containerNeeded)
                         {
-                            //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
-                            Console.WriteLine("(API REQUEST) " + pod.Name() + ": deleting existing pod");
-                            var deletionTask = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
-                                .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+                            try
+                            {
+                                //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
+                                Console.WriteLine("(API REQUEST) " + pod.Name() + ": deleting existing pod");
+                                //awaiting even this returns void, because if operations would throw exception, we want to catch them
+                                await client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
+                                    .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("Cannot delete pod " + e.Message);
+                            }
 
                             V1Pod newPod = GenerateApplicablePod(pod);
 
@@ -85,11 +93,9 @@ namespace MonitoringController
                             Console.WriteLine(newPod.Name() + ": adding image pull secrets");
                             newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
                             
-                            Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod");
                             try
                             {
-                                //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                                await deletionTask;
+                                Console.WriteLine("(API REQUEST) " + newPod.Name() + ": creating new pod");
                                 await client.CreateNamespacedPodAsync(newPod, pod.Namespace())
                                     .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod created"));
                             }
@@ -104,10 +110,18 @@ namespace MonitoringController
                     {
                         if (pod.Spec.HasContainer())
                         {
-                            //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
-                            Console.WriteLine("(API REQUEST)deleting existing pod " + pod.Name());
-                            var deletionTask = client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
-                                .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+                            try
+                            {
+                                //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
+                                Console.WriteLine("(API REQUEST)deleting existing pod " + pod.Name());
+                                //awaiting even this returns void, because if operations would throw exception, we want to catch them
+                                await client.DeleteNamespacedPodAsync(pod.Name(), pod.Namespace(), gracePeriodSeconds: 0)
+                                    .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod deleted"));
+                            }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("Cannot delete pod " + e.Message);
+                            }
 
                             V1Pod newPod = GenerateApplicablePod(pod);
 
@@ -141,7 +155,6 @@ namespace MonitoringController
                             try
                             {
                                 //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                                await deletionTask;
                                 await client.CreateNamespacedPodAsync(newPod, pod.Namespace()) 
                                     .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": pod created"));
                             }
@@ -180,6 +193,7 @@ namespace MonitoringController
             newPod.Spec = original.Spec;
             return newPod;
         }
+
         #endregion
     }
 }
