@@ -43,7 +43,7 @@ namespace MonitoringController
                         if (pod.Spec.HasContainer())
                         {
                             Console.WriteLine(pod.Name() + ": already has monitoring container");
-                            await CheckMonitoredPod(pod);
+                            await CheckAndUpdateMonitoredPod(pod);
                         }
                         else
                         {
@@ -152,7 +152,7 @@ namespace MonitoringController
             
         }
 
-        private async Task CheckMonitoredPod(V1Pod pod)
+        private async Task CheckAndUpdateMonitoredPod(V1Pod pod)
         {
             if (pod.Labels()?["csirt.muni.cz/monitoringState"] == "init")
             {
