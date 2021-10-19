@@ -27,7 +27,7 @@ namespace MonitoringController
                     //not valid preconditions
                     if (!PreconditionsChecks(resource))
                     {
-                        Console.WriteLine(resource.Name() + " :initial conditions are not met");
+                        Console.WriteLine(resource.Name() + ": initial conditions are not met");
                         return;
                     }
 

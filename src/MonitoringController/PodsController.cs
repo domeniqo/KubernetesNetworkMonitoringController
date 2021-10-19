@@ -21,13 +21,10 @@ namespace MonitoringController
                 Console.WriteLine(pod.Name() + ": is controlled by other resource");
                 return;
             }
-            //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
-            var deletionTask = DeletePodAsync(pod);
+            var gettingContainer = pod.GetMonitoringContainerAsync();
 
             V1Pod newPod = GenerateApplicablePod(pod);
 
-            Console.WriteLine(newPod.Name() + ": adding monitoring container");
-            newPod.Spec.AddContainer(k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml").Result);
 
             Console.WriteLine(newPod.Name() + ": adding labels");
             newPod.Labels()["csirt.muni.cz/monitoringState"] = "init";
@@ -40,8 +37,18 @@ namespace MonitoringController
             Console.WriteLine(newPod.Name() + ": adding image pull secrets");
             newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
 
-            await CreatePodAsync(newPod);
-            await deletionTask;
+            Console.WriteLine(newPod.Name() + ": adding monitoring container");
+            newPod.Spec.AddContainer(await gettingContainer);
+            try
+            {
+                //- update is not enough, because changes of containers of existing pod is illegal, create new and delete origin pod instead
+                await CreatePodAsync(newPod);
+                await DeletePodAsync(pod);
+            }
+            catch
+            {
+                Console.WriteLine(newPod.Name() + ": could not finish pod monitoring initialization");
+            }
 
         }
 
@@ -66,9 +73,6 @@ namespace MonitoringController
 
         public override async void DeinitMonitoring(V1Pod pod)
         {
-            //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
-            var deletionTask = DeletePodAsync(pod);
-
             V1Pod newPod = GenerateApplicablePod(pod);
 
             if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
@@ -98,8 +102,16 @@ namespace MonitoringController
                 newPod.Spec.ImagePullSecrets.Remove(newPod.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
             }
 
-            await CreatePodAsync(newPod);
-            await deletionTask;
+            try
+            {
+                //- update is not enough, because changes of containers of existing pod is illegal, create new and delete origin pod instead
+                await CreatePodAsync(newPod);
+                await DeletePodAsync(pod);
+            }
+            catch
+            {
+                Console.WriteLine(newPod.Name() + ": could not finish pod monitoring deinitialization");
+            }
 
         }
 
@@ -162,6 +174,7 @@ namespace MonitoringController
             catch (Exception e)
             {
                 Console.WriteLine("Cannot create pod " + e.Message);
+                throw e;
             }
         }
         #endregion
