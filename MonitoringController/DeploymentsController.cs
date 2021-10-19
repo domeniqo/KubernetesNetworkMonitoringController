@@ -12,24 +12,25 @@ namespace MonitoringController
     {
         public DeploymentsController(IKubernetes client) : base(client) { }
 
-        public override void EventHandler(WatchEventType eventType, V1Deployment resource)
+        protected override bool HasContainer(V1Deployment resource)
+        {
+            return resource.HasContainer();
+        }
+
+        public override void CheckAndUpdate(V1Deployment resource)
         {
             throw new NotImplementedException();
         }
 
-        public override void CheckAndUpdate()
+        public override void DeinitMonitoring(V1Deployment resource)
         {
             throw new NotImplementedException();
         }
 
-        public override void DeinitMonitoring()
+        public override void InitMonitoring(V1Deployment resource)
         {
             throw new NotImplementedException();
         }
 
-        public override void InitMonitoring()
-        {
-            throw new NotImplementedException();
-        }
     }
 }

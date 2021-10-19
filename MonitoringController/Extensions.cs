@@ -19,9 +19,14 @@ namespace MonitoringController
             return pod.OwnerReferences()?.Any(owner => owner.Controller == true) == true;
         }
 
-        public static bool HasContainer(this V1PodSpec spec)
+        public static bool HasContainer(this V1PodSpec podSpec)
         {
-            return spec.Containers?.Any(cont => cont.Name.Contains("csirt-probe")) == true;
+            return podSpec.Containers?.Any(cont => cont.Name.Contains("csirt-probe")) == true;
+        }
+
+        public static bool HasContainer(this V1Deployment deployment)
+        {
+            return deployment.Spec.Template.Spec.HasContainer();
         }
 
         public static void AddContainer(this V1PodSpec spec, V1Container container)

@@ -13,19 +13,19 @@ namespace MonitoringController
         /***
          * Ensures that T k8s object will have monitoring container added to the pod(s).
          * */
-        void InitMonitoring();
+        void InitMonitoring(T resource);
 
         /***
          * Checks whether k8s object is in good condition and performs action to update it accordingly to the actual state
          * (set labels, update monitoring container parameters etc.).
          */
-        void CheckAndUpdate();
+        void CheckAndUpdate(T resource);
 
         /***
          * Ensures that all labels, containers and every aspect which this controller is working with during lifetime 
          * of the k8s object is removed from its specification and updates it accordingly.
          */
-        void DeinitMonitoring();
+        void DeinitMonitoring(T resource);
 
         /***
          * Main event handler receiving events from k8s cluster API.
