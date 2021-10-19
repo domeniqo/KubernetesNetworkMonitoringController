@@ -24,10 +24,10 @@ namespace MonitoringController
                 //we do not care about other WatchEventType
                 if (eventType == WatchEventType.Added || eventType == WatchEventType.Modified)
                 {
-                    //not valid states
-                    if (resource.Metadata.DeletionTimestamp != null)
+                    //not valid preconditions
+                    if (!PreconditionsChecks(resource))
                     {
-                        Console.WriteLine(resource.Name() + ": is terminating");
+                        Console.WriteLine(resource.Name() + " :initial conditions are not met");
                         return;
                     }
 
@@ -54,15 +54,25 @@ namespace MonitoringController
                         }
                         else
                         {
-                            Console.WriteLine(resource.Name() + ": pod is not monitored");
+                            Console.WriteLine(resource.Name() + ": is not monitored");
                         }
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine(resource.Name() + "Error during k8s event handling (PodsController):\n" + e.Message + "\n" + e.StackTrace);
+                Console.WriteLine(resource.Name() + "Error during k8s event handling:\n" + e.Message + "\n" + e.StackTrace);
             }
+        }
+
+        /***
+         * Returns false => should not continue further processing
+           additional checks specific to particular resource should be added to overriden method in child classes
+         */
+        protected virtual bool PreconditionsChecks(T resource)
+        {
+            // Resource is not terminating, this is quiet strong common precondition. we do not care about resource when it's already terminating.
+            return resource.Metadata.DeletionTimestamp == null;
         }
 
         protected abstract bool HasContainer(T resource);
