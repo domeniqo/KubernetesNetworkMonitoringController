@@ -28,7 +28,7 @@ namespace MonitoringController
 
             var podlistResp = client.ListNamespacedPodWithHttpMessagesAsync("default", watch: true);
 
-            using (podlistResp.Watch<V1Pod, V1PodList>(podsController.KubeEventHandler))
+            using (podlistResp.Watch<V1Pod, V1PodList>(podsController.EventHandler))
             {
                 Console.WriteLine("press ctrl + c to stop watching");
 

@@ -8,71 +8,17 @@ using System.Threading.Tasks;
 
 namespace MonitoringController
 {
-    class PodsController
+    class PodsController : BaseController<V1Pod>
     {
-        private IKubernetes client;
-
         #region public
-        public PodsController(IKubernetes client)
-        {
-            this.client = client;
-        }
 
-        public async void KubeEventHandler(WatchEventType type, V1Pod pod)
-        {
-            try
-            {
-                //we do not care about other WatchEventType
-                if (type == WatchEventType.Added || type == WatchEventType.Modified)
-                {
-                    //not valid states
-                    if (pod.Metadata.DeletionTimestamp != null)
-                    {
-                        Console.WriteLine(pod.Name() + ": is terminating");
-                        return;
-                    }
-                    if (pod.Status.Phase != "Running")
-                    {
-                        Console.WriteLine(pod.Name() + ": is not in stable running state");
-                        return;
-                    }
+        public PodsController(IKubernetes client) : base(client) { }
 
-                    //check if label csirt.muni.cz/monitoring is set to 'enabled'
-                    if (pod.IsMonitored())
-                    {
-                        if (pod.Spec.HasContainer())
-                        {
-                            Console.WriteLine(pod.Name() + ": already has monitoring container");
-                            await CheckAndUpdateMonitoredPod(pod);
-                        }
-                        else
-                        {
-                            await InitializePodMonitoring(pod);
-                        }
-
-                    }
-                    else
-                    {
-                        //check if pod has monitoring container, but should not have according to label csirt.muni.cz/monitoring
-                        if (pod.Spec.HasContainer())
-                        {
-                            await DisablePodMonitoring(pod);
-                        }
-                        else
-                        {
-                            Console.WriteLine(pod.Name() + ": pod is not monitored");
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(pod.Name() + "Error during k8s event handling (PodsController):\n" + e.Message + "\n" + e.StackTrace);
-            }
-
-            
-        }
         #endregion
+        protected override bool PreconditionsChecks(V1Pod resource)
+        {
+            return base.PreconditionsChecks(resource) && resource.Status.Phase == "Running";
+        }
 
         #region private
         /***
@@ -121,7 +67,7 @@ namespace MonitoringController
             }
         }
 
-        private async Task InitializePodMonitoring(V1Pod pod)
+        public override async void InitMonitoring(V1Pod pod)
         {
             if (pod.HasController())
             {
@@ -152,7 +98,7 @@ namespace MonitoringController
             
         }
 
-        private async Task CheckAndUpdateMonitoredPod(V1Pod pod)
+        public override async void CheckAndUpdate(V1Pod pod)
         {
             if (pod.Labels()?["csirt.muni.cz/monitoringState"] == "init")
             {
@@ -171,7 +117,7 @@ namespace MonitoringController
             }
         }
 
-        private async Task DisablePodMonitoring(V1Pod pod)
+        public override async void DeinitMonitoring(V1Pod pod)
         {
             //- update is not enough, because changes of containers of existing pod is illegal, delete and create new pod instead
             var deletionTask = DeletePodAsync(pod);
@@ -209,6 +155,12 @@ namespace MonitoringController
             await deletionTask;
 
         }
+
+        protected override bool HasContainer(V1Pod resource)
+        {
+            return resource.Spec.HasContainer();
+        }
+
         #endregion
     }
 }
