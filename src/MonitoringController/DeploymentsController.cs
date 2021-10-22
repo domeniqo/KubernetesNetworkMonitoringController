@@ -42,6 +42,10 @@ namespace MonitoringController
 
         public override async void DeinitMonitoring(V1Deployment resource)
         {
+            if (resource.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
+            {
+                resource.Labels().Remove("csirt.muni.cz/monitoringState");
+            }
             resource.Spec.Template.Spec.Containers = resource.Spec.Template.Spec.Containers.Except(resource.Spec.Template.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
             if (resource.Spec.Template.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
             {
