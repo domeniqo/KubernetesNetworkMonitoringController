@@ -37,7 +37,5 @@ namespace MonitoringController
                 ctrlc.Wait();
             }
         }
-
-
     }
 }
