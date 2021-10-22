@@ -43,13 +43,17 @@ Along with this project, network probe and collector are developed. Probe gets r
 
 # Functionality
 
-We have
+#TODO describe functionality
+
+<img alt="Kubernetes probes placement" src="/docs/resources/event_handler_flowchart.jpg"/>
 
 ---
 
 Note: It is good to know that our project has dependency and use [kubernetes-client/csharp](https://github.com/kubernetes-client/csharp) to communicate with K8s API. It's inspired with this client source code and uses generic approach and extension methods as a functional elements.
 
 # Usage
+
+#TODO describe usage
 
 ## Requirements
 
