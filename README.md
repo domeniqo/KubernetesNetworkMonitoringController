@@ -28,11 +28,13 @@ Along with this project, network probe and collector are developed. Probe gets r
 
 &#x1F7E9; &#x1F7E7; Test in cluster
 
+&#x1F7E7; Update configuration of monitoring based on external source
+
 &#x1F7E7; Create specific controller logic for K8s object REPLICA SET
 
 &#x1F7E5; Create specific controller logic for K8s object JOB
 
-&#x1F7E6; &#x1F7E5; Create unit tests
+&#x1F7E5; &#x1F7E6; Create unit tests
 
 ---
 
