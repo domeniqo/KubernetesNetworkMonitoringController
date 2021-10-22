@@ -16,11 +16,6 @@ namespace MonitoringController
 
         public override async void InitMonitoring(V1Pod pod)
         {
-            if (pod.HasController())
-            {
-                Console.WriteLine(pod.Name() + ": is controlled by other resource");
-                return;
-            }
             var gettingContainer = pod.GetMonitoringContainerAsync();
 
             V1Pod newPod = GenerateApplicablePod(pod);
@@ -121,7 +116,7 @@ namespace MonitoringController
         protected override bool PreconditionsChecks(V1Pod resource)
         {
             //we do not care about pods which are not running
-            return base.PreconditionsChecks(resource) && resource.Status.Phase == "Running";
+            return base.PreconditionsChecks(resource) && resource.Status.Phase == "Running" && !resource.HasController();
         }
 
         protected override bool HasContainer(V1Pod resource)
