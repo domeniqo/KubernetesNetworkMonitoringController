@@ -55,10 +55,32 @@ Note: It is good to know that our project has dependency and use [kubernetes-cli
 
 # Usage
 
-#TODO describe usage
+Since the whole concept of controller is focused on automatization of the process, user inputs are not needed for controller to tun. It reacts to events from K8s API and makes decisions on its own. The only thing what user needs to do is to deploy this program somehow and ensure it has right configuration to be able to connect to K8s API and has permissions to read, update and delete objects in K8s API.
 
-## Requirements
+## Running the controller
+
+### Requirements
 
 - K8s cluster up and running
 - kubectl or another similar tool to be able to deploy YAML files
 - (optional) "cluster:admin" role credentials to be able to modify authorization rules etc. if needed
+
+### InCluster deployment
+#TODO build docker image
+#TODO yaml file with user with permissions
+
+### On-site deployment
+#TODO describe what is needed
+
+## Enabling monitoring
+
+All you need to do is to set label in the object metadata (external system, GUI tools, "kubectl edit" etc.).
+Object.Metadata.Labels:
+  csirt.muni.cz/monitoring = enabled
+
+## Disabling monitoring
+
+Object.Metadata.Labels:
+  csirt.muni.cz/monitoring = disabled
+
+Also, all objects which does not contain this label are ignored during processing, so disabling may be as simple as removing this label completely from K8s object.
