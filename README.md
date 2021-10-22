@@ -45,9 +45,11 @@ Along with this project, network probe and collector are developed. Probe gets r
 
 # Functionality
 
-#TODO describe functionality
+Basic idea of workflow when event from K8s API is received is shown in the picture below.
 
 <img alt="Kubernetes probes placement" src="/docs/resources/event_handler_flowchart.jpg"/>
+
+#TODO describe functionality
 
 ---
 
