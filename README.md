@@ -67,20 +67,42 @@ Since the whole concept of controller is focused on automatization of the proces
 
 ### InCluster deployment
 #TODO build docker image
+
 #TODO yaml file with user with permissions
 
 ### On-site deployment
 #TODO describe what is needed
 
 ## Enabling monitoring
+This applies for all already supported objects:
 
 All you need to do is to set label in the object metadata (external system, GUI tools, "kubectl edit" etc.).
-Object.Metadata.Labels:
-  csirt.muni.cz/monitoring = enabled
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  ...
+  labels:
+    csirt.muni.cz/monitoring: enabled
+    ...
+  ...
+...
+```
 
 ## Disabling monitoring
+This applies for all already supported objects:
 
-Object.Metadata.Labels:
-  csirt.muni.cz/monitoring = disabled
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  ...
+  labels:
+    csirt.muni.cz/monitoring: disabled
+    ...
+  ...
+...
+```
 
-Also, all objects which does not contain this label are ignored during processing, so disabling may be as simple as removing this label completely from K8s object.
+Also, all objects which does not contain this label are checked whether they contain monitoring container and other elements managed by controller during processing, so disabling may be as simple as removing this label completely from K8s object.
