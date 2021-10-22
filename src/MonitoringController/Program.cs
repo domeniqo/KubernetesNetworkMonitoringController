@@ -24,17 +24,23 @@ namespace MonitoringController
             }
 
             client = new Kubernetes(config);
-            PodsController podsController = new PodsController(client);
+            IController<V1Pod> podsController = new PodsController(client);
+            IController<V1Deployment> deploymentsController = new DeploymentsController(client);
 
             var podlistResp = client.ListNamespacedPodWithHttpMessagesAsync("default", watch: true);
+            var deploymetlistResp = client.ListNamespacedDeploymentWithHttpMessagesAsync("default", watch: true);
 
             using (podlistResp.Watch<V1Pod, V1PodList>(podsController.EventHandler))
             {
-                Console.WriteLine("press ctrl + c to stop watching");
+                using (deploymetlistResp.Watch<V1Deployment, V1DeploymentList>(deploymentsController.EventHandler))
+                {
 
-                var ctrlc = new ManualResetEventSlim(false);
-                Console.CancelKeyPress += (sender, eventArgs) => ctrlc.Set();
-                ctrlc.Wait();
+                    Console.WriteLine("press ctrl + c to stop watching");
+
+                    var ctrlc = new ManualResetEventSlim(false);
+                    Console.CancelKeyPress += (sender, eventArgs) => ctrlc.Set();
+                    ctrlc.Wait();
+                }
             }
         }
     }
