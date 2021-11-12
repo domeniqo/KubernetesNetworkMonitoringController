@@ -4,7 +4,7 @@
 
 A controller tracks at least one Kubernetes resource type. These objects have a spec field that represents the desired state. The controller for that resource are responsible for making the current state come closer to that desired state. 
 
-The controller might carry the action out itself; more commonly, in Kubernetes, a controller will send messages to the API server that have useful side effects. You'll see examples of this below."
+The controller might carry the action out itself; more commonly, in Kubernetes, a controller will send messages to the API server that have useful side effects."
 
 ## Project purpose and goals
 
@@ -45,19 +45,68 @@ Along with this project, network probe and collector are developed. Probe gets r
 
 # Functionality
 
+There are basically two main approaches you can use to communicate with K8s API and react on particular events:
+1. [Register a webhook](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) and wait for the invocation from K8s API prior create/update/delete of K8s objects. 
+2. Actively listen and react on changes in K8s cluster. This functionality can be achieved with [K8s API client](https://kubernetes.io/docs/reference/using-api/client-libraries/).
+
+Both options use so-called [Controller pattern](https://kubernetes.io/docs/concepts/architecture/controller/) to manage K8s objects and manipulate them. Our solution acts as an API client and actively listens and reacts to changes in K8s cluster in real-time. We are using one of the officially supported client libraries written in C# ([kubernetes-client/csharp](https://github.com/kubernetes-client/csharp)). On top of that we are building the application which can add/remove additional containers with network flows exporters to PODs to be able to monitor the network traffic inside these PODs. Based on metadata of particular K8s objects we decide what should be done with the K8s object and update it accordingly. Controller decisions are based on object.metadata.labels or on object.metadata.annotations values. Full list with description of used metadata is shown in the following table. 
+
+<table>
+    <thead>
+        <tr>
+            <th>Object.Metadata.Labels.Key</th>
+            <th>Value</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td rowspan=2>csirt.muni.cz/monitoring</td>
+            <td>enabled</td>
+            <td rowspan=2>User defined value. Defines whether containers defined by K8s object should be monitored or not. When this label is not provided at all, it's the same as Disabled option.</td>
+        </tr>
+        <tr>
+            <td>disabled</td>
+        </tr>
+        <tr>
+            <td rowspan=2>csirt.muni.cz/monitoringState</td>
+            <td>init</td>
+            <td rowspan=2>Used for internal state recognition.</td>
+        </tr>
+        <tr>
+            <td>monitoring</td>
+        </tr>
+        <tr>
+            <td>csirt.muni.cz/originPodName</td>
+            <td>[name]</td>
+            <td>Internal usage. Since PODs are immutable objects in K8s, this is used by PodsController in the following way: when monitoring on POD object is enabled original pod is deleted and new one with postfix '-monitored' is created. When monitoring is disabled on this POD, this value is used to create a new POD with the name it had before monitoring. However, user should consider using PODs as standalone objects and use some <a href="https://kubernetes.io/docs/concepts/workloads/pods/#workload-resources-for-managing-pods">workload resource</a> to manage PODs.</td>
+        </tr>
+    </tbody>
+</table>
+<table>
+    <thead>
+        <tr>
+            <th>Object.Metadata.Annotations.Key</th>
+            <th>Value</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>csirt.muni.cz/containerTemplate</td>
+            <td>[name]</td>
+            <td>Name of the template to be used. Templates define what monitoring container and other PODs spec fields to be applied. This is basically configuration for any other container you want to add as part of the POD.spec field. Check predefined templates <a href="src/MonitoringController/ContainerTemplates">here</a></td>
+        </tr>
+    </tbody>
+</table>
+
 Basic idea of workflow when event from K8s API is received is shown in the picture below.
 
 <img alt="Kubernetes probes placement" src="/docs/resources/event_handler_flowchart.jpg"/>
 
-#TODO describe functionality
-
----
-
-Note: It is good to know that our project has dependency and use [kubernetes-client/csharp](https://github.com/kubernetes-client/csharp) to communicate with K8s API. It's inspired with this client source code and uses generic approach and extension methods as a functional elements.
-
 # Usage
 
-Since the whole concept of controller is focused on automatization of the process, user inputs are not needed for controller to tun. It reacts to events from K8s API and makes decisions on its own. The only thing what user needs to do is to deploy this program somehow and ensure it has right configuration to be able to connect to K8s API and has permissions to read, update and delete objects in K8s API.
+Since the whole concept of controller is focused on automatization of the process, user inputs are not needed for controller to run. It reacts to events from K8s API and makes decisions on its own. The only thing what user needs to do is to deploy this program somehow and ensure it has right configuration to be able to connect to K8s API and has permissions to read, update and delete objects in K8s API.
 
 ## Running the controller
 
