@@ -63,7 +63,7 @@ Both options use so-called [Controller pattern](https://kubernetes.io/docs/conce
         <tr>
             <td rowspan=2>csirt.muni.cz/monitoring</td>
             <td>enabled</td>
-            <td rowspan=2>User defined value. Defines whether containers defined by K8s object should be monitored or not. When this label is not provided at all, it's the same as Disabled option.</td>
+            <td rowspan=2>User defined value. Defines whether containers defined by K8s object should be monitored or not. When this label is not provided at all, it's the same as 'disabled' option.</td>
         </tr>
         <tr>
             <td>disabled</td>
@@ -79,7 +79,7 @@ Both options use so-called [Controller pattern](https://kubernetes.io/docs/conce
         <tr>
             <td>csirt.muni.cz/originPodName</td>
             <td>[name]</td>
-            <td>Internal usage. Since PODs are immutable objects in K8s, this is used by PodsController in the following way: when monitoring on POD object is enabled original pod is deleted and new one with postfix '-monitored' is created. When monitoring is disabled on this POD, this value is used to create a new POD with the name it had before monitoring. However, user should consider using PODs as standalone objects and use some <a href="https://kubernetes.io/docs/concepts/workloads/pods/#workload-resources-for-managing-pods">workload resource</a> to manage PODs.</td>
+            <td>Internal usage. Since PODs are immutable objects in K8s, this is used by our PodsController in the following way: when monitoring on POD object is enabled original pod is deleted and new one with postfix '-monitored' is created. When monitoring is disabled on this POD, this value is used to create a new POD with the name it had before monitoring. However, user should consider using PODs as standalone objects and use some <a href="https://kubernetes.io/docs/concepts/workloads/pods/#workload-resources-for-managing-pods">workload resource</a> to manage PODs.</td>
         </tr>
     </tbody>
 </table>
