@@ -16,7 +16,7 @@ Along with this project, network probe and collector are developed. Probe gets r
 
 - Original probe [CESNET/ipfixprobe](https://github.com/CESNET/ipfixprobe)
 - Original collector [CESNET/ipfixcol2](https://github.com/CESNET/ipfixcol2)
-- Original probe + kubernetes plugin + configuration of collector [domeniqo/ipfixprobe](https://github.com/domeniqo/ipfixprobe)
+- Original probe + kubernetes plugin + configuration of collector [domeniqo/ipfixprobe](https://github.com/domeniqo/ipfixprobe/tree/kubernetes-plugin)
 
 # Actual status
 
