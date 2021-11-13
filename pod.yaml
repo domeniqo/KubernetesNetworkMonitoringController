@@ -9,4 +9,4 @@ spec:
   #  - name: regcred
   containers:
     - name: controller
-      image: domeniqo/csirt:monitoringController
+      image: domeniqo/kubernetesmonitoringcontroller
