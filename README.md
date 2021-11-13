@@ -117,12 +117,28 @@ Since the whole concept of controller is focused on automatization of the proces
 - (optional) "cluster:admin" role credentials to be able to modify authorization rules etc. if needed
 
 ### InCluster deployment
-#TODO build docker image
 
-#TODO yaml file with user with permissions
+**Requirements:**
+
+- docker engine to build image
+- repository where you put your docker image
+- k8s cluster up and running
+- kubectl or another tool configured to be able to apply yaml file
+
+1. Build docker image using this [Dockerfile](Dockerfile)
+2. Push docker image to your public/private repository
+3. Use this [pod.yaml](pod.yaml) to create POD with controller
+
+**Note:** See comments in provided files to various settings.
 
 ### On-site deployment
-#TODO describe what is needed
+
+**Requirements:**
+
+- dotnet 5.0 SDK for build/run
+- admin.conf file with configuration of K8s cluster you are communicating with (you can put this file in project's root folder and it will be copied to your build folder - see MonitoringController.csproj)
+
+Use visual studio to build/run/debug the code or run built code independently.
 
 ## Enabling monitoring
 This applies for all already supported objects:
