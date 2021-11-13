@@ -172,4 +172,4 @@ metadata:
 ...
 ```
 
-Also, all objects which does not contain this label are checked whether they contain monitoring container and other elements managed by controller during processing, so disabling may be as simple as removing this label completely from K8s object.
+**Important note:** All objects which does not contain this label are checked whether they contain monitoring container and other elements managed by controller during processing, so disabling may be as simple as removing this label completely from K8s object.
