@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: controller-pod
+  namespace: default
+spec:
+  #serviceAccountName: admin #use in case default service account attached to the POD has no sufficient read/write persmissions
+  #imagePullSecrets: # use if you pulling docker image from your private repository
+  #  - name: regcred
+  containers:
+    - name: controller
+      image: domeniqo/csirt:monitoringController
