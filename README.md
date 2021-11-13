@@ -138,7 +138,7 @@ Since the whole concept of controller is focused on automatization of the proces
 - dotnet 5.0 SDK for build/run
 - admin.conf file with configuration of K8s cluster you are communicating with (you can put this file in project's root folder and it will be copied to your build folder - see MonitoringController.csproj)
 
-Use visual studio to build/run/debug the code or run built code independently.
+Use visual studio to build/run/debug the code or run built code independently with provided k8s config file.
 
 ## Enabling monitoring
 This applies for all already supported objects:
