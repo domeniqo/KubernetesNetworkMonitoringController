@@ -19,6 +19,16 @@
     <None Update="ContainerTemplates\flowmonprobe.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="PodTemplates\flowmonprobe.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="PodTemplates\ipfixprobe.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="PodTemplates\" />
   </ItemGroup>
 
 </Project>

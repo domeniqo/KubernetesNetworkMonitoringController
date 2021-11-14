@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ipfixprobe-exporter-pod
+spec:
+  imagePullSecrets:
+  - name: regcred
+  containers:
+  - name: csirt-probe-ipfixprobe-exporter
+    image: domeniqo/ipfixprobe
+    imagePullPolicy: Always
+    command: ["/bin/sh", "-c"]
+    args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && ipfixprobe -x ipfixcol2-service:4739 -u -I eth0 -p kubernetes:file-name=/home/kubernetes/kube_info.txt -vvv"]
+    env:
+    - name: KUBERNETES_POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: KUBERNETES_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
