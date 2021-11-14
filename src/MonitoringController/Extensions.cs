@@ -64,6 +64,14 @@ namespace MonitoringController
             }
         }
 
+        public static void MergeWith(this V1PodSpec orig, V1PodSpec other)
+        {
+            orig.Containers = orig.Containers.Union(other.Containers).ToList();
+            orig.ImagePullSecrets = orig.ImagePullSecrets.Union(other.ImagePullSecrets).ToList();
+            //orig.ServiceAccountName = other.ServiceAccountName; //ServiceAccountName with sufficient permissions should be provided by cluster User prior monitoring
+            orig.Volumes = orig.Volumes.Union(other.Volumes).ToList();
+        }
+
         public static bool HasController(this V1Pod pod)
         {
             return pod.OwnerReferences()?.Any(owner => owner.Controller == true) == true;

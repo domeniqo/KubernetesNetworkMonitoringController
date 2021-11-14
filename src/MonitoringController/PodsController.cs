@@ -18,6 +18,8 @@ namespace MonitoringController
         {
             var gettingContainer = pod.GetMonitoringContainerTemplateAsync();
 
+            var gettingPod = pod.GetMonitoringPodTemplateAsync();
+
             V1Pod newPod = GenerateApplicablePod(pod);
 
 
@@ -33,7 +35,15 @@ namespace MonitoringController
             newPod.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
 
             Console.WriteLine(newPod.Name() + ": adding monitoring container");
-            newPod.Spec.AddContainer(await gettingContainer);
+
+            if((await gettingPod) != null)
+            {
+                newPod.Spec.MergeWith(gettingPod.Result.Spec);
+            }
+            else
+            {
+                newPod.Spec.AddContainer(await gettingContainer);
+            }
             try
             {
                 //- update is not enough, because changes of containers of existing pod is illegal, create new and delete origin pod instead

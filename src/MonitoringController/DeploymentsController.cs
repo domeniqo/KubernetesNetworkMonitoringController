@@ -67,11 +67,19 @@ namespace MonitoringController
         public override async void InitMonitoring(V1Deployment resource)
         {
             var loadContainerTask = resource.GetMonitoringContainerTemplateAsync();
+            var loadPodTask = resource.GetMonitoringPodTemplateAsync();
+
             resource.Labels()["csirt.muni.cz/monitoringState"] = "init";
 
             resource.Spec.Template.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
-
-            resource.Spec.Template.Spec.AddContainer(await loadContainerTask);
+            if ((await loadPodTask) != null)
+            {
+                resource.Spec.Template.Spec.MergeWith(loadPodTask.Result.Spec);
+            }
+            else 
+            { 
+                resource.Spec.Template.Spec.AddContainer(await loadContainerTask);
+            }
 
             Console.WriteLine("(API REQUEST) " + resource.Name() + " :initialization of monitoring");
             try
