@@ -42,7 +42,7 @@ namespace MonitoringController
 
         public override async void DeinitMonitoring(V1Deployment deployment)
         {
-            if (deployment.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
+            if (deployment.Labels()?.ContainsKey("csirt.muni.cz/monitoringState") == true)
             {
                 deployment.Labels().Remove("csirt.muni.cz/monitoringState");
             }
@@ -69,6 +69,10 @@ namespace MonitoringController
             var loadContainerTask = deployment.GetMonitoringContainerTemplateAsync();
             var loadPodTask = deployment.GetMonitoringPodTemplateAsync();
 
+            if (deployment.Labels() == null)
+            {
+                deployment.Metadata.Labels = new Dictionary<string, string>();
+            }
             deployment.Labels()["csirt.muni.cz/monitoringState"] = "init";
 
             deployment.Spec.Template.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };

@@ -80,7 +80,7 @@ namespace MonitoringController
         {
             V1Pod newPod = GenerateApplicablePod(pod);
 
-            if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+            if (newPod.Labels()?.ContainsKey("csirt.muni.cz/originPodName") == true)
             {
                 newPod.Metadata.Name = newPod.Labels()["csirt.muni.cz/originPodName"];
             }
@@ -91,11 +91,11 @@ namespace MonitoringController
             Console.WriteLine(newPod.Name() + ": updating name of pod. Origin name: " + pod.Name());
 
             Console.WriteLine(newPod.Name() + ": updating labels of pod");
-            if (newPod.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
+            if (newPod.Labels()?.ContainsKey("csirt.muni.cz/monitoringState") == true)
             {
                 newPod.Labels().Remove("csirt.muni.cz/monitoringState");
             }
-            if (newPod.Labels().ContainsKey("csirt.muni.cz/originPodName"))
+            if (newPod.Labels()?.ContainsKey("csirt.muni.cz/originPodName") == true)
             {
                 newPod.Labels().Remove("csirt.muni.cz/originPodName");
             }
