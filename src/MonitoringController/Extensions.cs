@@ -16,7 +16,7 @@ namespace MonitoringController
             return (value == "enabled");
         }
 
-        public static async Task<V1Container> GetMonitoringContainerAsync(this IMetadata<V1ObjectMeta> obj)
+        public static async Task<V1Container> GetMonitoringContainerTemplateAsync(this IMetadata<V1ObjectMeta> obj)
         {
             string containerTemplateName = string.Empty;
             if (obj.Annotations()?.TryGetValue("csirt.muni.cz/containerTemplate", out containerTemplateName) == true)
@@ -36,6 +36,30 @@ namespace MonitoringController
             else
             {
                 Console.WriteLine("Could not find annotation 'csirt.muni.cz/containerTemplate' in given resource");
+                return null;
+            }
+        }
+
+        public static async Task<V1Pod> GetMonitoringPodTemplateAsync(this IMetadata<V1ObjectMeta> obj)
+        {
+            string containerTemplateName = string.Empty;
+            if (obj.Annotations()?.TryGetValue("csirt.muni.cz/podTemplate", out containerTemplateName) == true)
+            {
+                string path = "PodTemplates/" + containerTemplateName + ".yaml";
+                try
+                {
+                    return await k8s.Yaml.LoadFromFileAsync<V1Pod>(path);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Could not load pod template. Does it exist? Path: " + path);
+                    Console.WriteLine("Exception message: " + e.Message);
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("Could not find annotation 'csirt.muni.cz/podTemplate' in given resource");
                 return null;
             }
         }

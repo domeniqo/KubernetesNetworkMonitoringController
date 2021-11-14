@@ -66,7 +66,7 @@ namespace MonitoringController
 
         public override async void InitMonitoring(V1Deployment resource)
         {
-            var loadContainerTask = k8s.Yaml.LoadFromFileAsync<V1Container>("ContainerTemplates/ipfixprobe.yaml");
+            var loadContainerTask = resource.GetMonitoringContainerTemplateAsync();
             resource.Labels()["csirt.muni.cz/monitoringState"] = "init";
 
             resource.Spec.Template.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };

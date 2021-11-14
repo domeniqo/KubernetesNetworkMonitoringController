@@ -16,7 +16,7 @@ namespace MonitoringController
 
         public override async void InitMonitoring(V1Pod pod)
         {
-            var gettingContainer = pod.GetMonitoringContainerAsync();
+            var gettingContainer = pod.GetMonitoringContainerTemplateAsync();
 
             V1Pod newPod = GenerateApplicablePod(pod);
 
