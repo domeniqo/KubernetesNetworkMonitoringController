@@ -12,25 +12,25 @@ namespace MonitoringController
     {
         public DeploymentsController(IKubernetes client) : base(client) { }
 
-        protected override bool HasContainer(V1Deployment resource)
+        protected override bool HasContainer(V1Deployment deployment)
         {
-            return resource.HasContainer();
+            return deployment.HasContainer();
         }
 
-        public override async void CheckAndUpdate(V1Deployment resource)
+        public override async void CheckAndUpdate(V1Deployment deployment)
         {
-            if (resource.Status.Replicas != resource.Status.ReadyReplicas)
+            if (deployment.Status.Replicas != deployment.Status.ReadyReplicas)
             {
                 return;
             }
-            if (resource.Labels()?["csirt.muni.cz/monitoringState"] == "init")
+            if (deployment.Labels()?["csirt.muni.cz/monitoringState"] == "init")
             {
-                resource.Labels()["csirt.muni.cz/monitoringState"] = "monitoring";
-                Console.WriteLine("(API REQUEST) " + resource.Name() + ": updating csirt.muni.cz/monitoringState label");
+                deployment.Labels()["csirt.muni.cz/monitoringState"] = "monitoring";
+                Console.WriteLine("(API REQUEST) " + deployment.Name() + ": updating csirt.muni.cz/monitoringState label");
                 try
                 {
                     //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                    await client.ReplaceNamespacedDeploymentAsync(resource, resource.Name(), resource.Namespace())
+                    await client.ReplaceNamespacedDeploymentAsync(deployment, deployment.Name(), deployment.Namespace())
                         .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": deployment updated"));
                 }
                 catch (Exception e)
@@ -40,22 +40,22 @@ namespace MonitoringController
             }
         }
 
-        public override async void DeinitMonitoring(V1Deployment resource)
+        public override async void DeinitMonitoring(V1Deployment deployment)
         {
-            if (resource.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
+            if (deployment.Labels().ContainsKey("csirt.muni.cz/monitoringState"))
             {
-                resource.Labels().Remove("csirt.muni.cz/monitoringState");
+                deployment.Labels().Remove("csirt.muni.cz/monitoringState");
             }
-            resource.Spec.Template.Spec.Containers = resource.Spec.Template.Spec.Containers.Except(resource.Spec.Template.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
-            if (resource.Spec.Template.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
+            deployment.Spec.Template.Spec.Containers = deployment.Spec.Template.Spec.Containers.Except(deployment.Spec.Template.Spec.Containers.Where(container => container.Name.Contains("csirt-probe"))).ToList();
+            if (deployment.Spec.Template.Spec.ImagePullSecrets.Contains(new V1LocalObjectReference("regcred")))
             {
-                resource.Spec.Template.Spec.ImagePullSecrets.Remove(resource.Spec.Template.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
+                deployment.Spec.Template.Spec.ImagePullSecrets.Remove(deployment.Spec.Template.Spec.ImagePullSecrets.First(or => or.Name == "regcred"));
             }
-            Console.WriteLine("(API REQUEST) " + resource.Name() + ": updating csirt.muni.cz/monitoringState label");
+            Console.WriteLine("(API REQUEST) " + deployment.Name() + ": updating csirt.muni.cz/monitoringState label");
             try
             {
                 //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                await client.ReplaceNamespacedDeploymentAsync(resource, resource.Name(), resource.Namespace())
+                await client.ReplaceNamespacedDeploymentAsync(deployment, deployment.Name(), deployment.Namespace())
                     .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + ": deployment monitoring deinitialized"));
             }
             catch (Exception e)
@@ -64,28 +64,28 @@ namespace MonitoringController
             }
         }
 
-        public override async void InitMonitoring(V1Deployment resource)
+        public override async void InitMonitoring(V1Deployment deployment)
         {
-            var loadContainerTask = resource.GetMonitoringContainerTemplateAsync();
-            var loadPodTask = resource.GetMonitoringPodTemplateAsync();
+            var loadContainerTask = deployment.GetMonitoringContainerTemplateAsync();
+            var loadPodTask = deployment.GetMonitoringPodTemplateAsync();
 
-            resource.Labels()["csirt.muni.cz/monitoringState"] = "init";
+            deployment.Labels()["csirt.muni.cz/monitoringState"] = "init";
 
-            resource.Spec.Template.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
+            deployment.Spec.Template.Spec.ImagePullSecrets = new List<V1LocalObjectReference> { new V1LocalObjectReference("regcred") };
             if ((await loadPodTask) != null)
             {
-                resource.Spec.Template.Spec.MergeWith(loadPodTask.Result.Spec);
+                deployment.Spec.Template.Spec.MergeWith(loadPodTask.Result.Spec);
             }
             else 
             { 
-                resource.Spec.Template.Spec.AddContainer(await loadContainerTask);
+                deployment.Spec.Template.Spec.AddContainer(await loadContainerTask);
             }
 
-            Console.WriteLine("(API REQUEST) " + resource.Name() + " :initialization of monitoring");
+            Console.WriteLine("(API REQUEST) " + deployment.Name() + " :initialization of monitoring");
             try
             {
                 //awaiting even this returns void, because if operations would throw exception, we want to catch them
-                await client.ReplaceNamespacedDeploymentAsync(resource, resource.Name(), resource.Namespace())
+                await client.ReplaceNamespacedDeploymentAsync(deployment, deployment.Name(), deployment.Namespace())
                     .ContinueWith(task => Console.WriteLine("(API RESPONSE) " + task.GetAwaiter().GetResult().Name() + " :initialization successful"));
             }
             catch(Exception e)
