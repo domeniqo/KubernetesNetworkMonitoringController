@@ -4,7 +4,7 @@ name: csirt-probe-ipfixprobe-exporter
 image: domeniqo/csirt:ipfixprobe-dev3
 imagePullPolicy: Always
 command: ["/bin/sh", "-c"]
-args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && ipfixprobe -x 172.16.10.59:4739 -u -I eth0 -p kubernetes:file-name=/home/kubernetes/kube_info.txt -vvv"]
+args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && ipfixprobe -x ipfixcol2-service:4739 -u -I eth0 -p kubernetes:file-name=/home/kubernetes/kube_info.txt -vvv"]
 env:
   - name: KUBERNETES_POD_NAME
     valueFrom:

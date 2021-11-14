@@ -1,10 +1,10 @@
 ﻿apiVersion: v1
 kind: Container
 name: csirt-probe-flowmon-exporter
-image: domeniqo/csirt:kube-flowmon_1.2
+image: domeniqo/csirt:kube-flowmon_1.3
 imagePullPolicy: Always
 command: ["/bin/sh", "-c"]
-args: ["python3 /home/kubernetes/load_kube_info.py /home/kubernetes/kube_info.txt && sleep infinity"]
+args: ["python3 /home/flowmon/load_kube_info.py /home/flowmon/kube_info.txt && flowmonexp5 -O DBUS_MODE=OFF -I pcap-simple:device=eth0 -P kubernetes:file-name=/home/flowmon/kube_info.txt -P npm-metrics -P npm-metrics-extended -P dns -E ipfix-ng:host=147.251.14.40,port=4739,template-file=/etc/flowmon/kube_ipfix-ng_template.txt"]
 volumeMounts:
 - mountPath: /dev/mem
   name: dev-mem
@@ -17,3 +17,7 @@ env:
     valueFrom:
       fieldRef:
         fieldPath: metadata.name
+  - name: KUBERNETES_NAMESPACE
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.namespace
