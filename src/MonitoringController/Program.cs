@@ -24,14 +24,16 @@ namespace MonitoringController
             }
 
             var namespaceVar = Environment.GetEnvironmentVariable("KUBERNETES_MONITORING_NAMESPACE");
-            var nameSpaceName = namespaceVar == null ? "default" : namespaceVar;
+            var namespaceName = namespaceVar == null ? "default" : namespaceVar;
 
+            Console.WriteLine("connecting to workspace: " + namespaceName);
+            
             client = new Kubernetes(config);
             IController<V1Pod> podsController = new PodsController(client);
             IController<V1Deployment> deploymentsController = new DeploymentsController(client);
 
-            var podlistResp = client.ListNamespacedPodWithHttpMessagesAsync(nameSpaceName, watch: true);
-            var deploymetlistResp = client.ListNamespacedDeploymentWithHttpMessagesAsync(nameSpaceName, watch: true);
+            var podlistResp = client.ListNamespacedPodWithHttpMessagesAsync(namespaceName, watch: true);
+            var deploymetlistResp = client.ListNamespacedDeploymentWithHttpMessagesAsync(namespaceName, watch: true);
 
             using (podlistResp.Watch<V1Pod, V1PodList>(podsController.EventHandler))
             {
